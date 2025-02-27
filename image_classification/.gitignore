@@ -1,0 +1,6 @@
+__pycache__/
+wandb/
+checkpoint/
+poetry.lock
+.venv
+data/

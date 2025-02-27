@@ -1,0 +1,37 @@
+# model_hyperparameters.yaml
+model:
+  dataset: PlantVillage
+  name: CNN
+  hyperparameters:
+    optimizer:
+      type: SGD
+      learning_rate: 0.001
+      momentum: 0.9
+    loss: crossentropy
+    metrics:
+      - accuracy
+      - top_k_categorical_accuracy
+
+transfer_learning:
+  resnet: False        # ResNet-50
+  mobilenet: False    # MobileNetV2
+  ViT: False          # ViT 16 Base
+  custom: True       # Model from model.py file
+
+training:
+  use_wandb: False
+  batch_size: 32
+  epochs: 100
+  save_path: "checkpoint/custom"
+  early_stopping:
+    monitor: val_loss
+    patience: 4
+
+data:
+  directory_root: "data/plantvillage dataset/color"
+  augmentation:
+    horizontal_flip: True
+    rotation_range: 20
+    resize: 224
+    random_rotation: 30
+    normalize: true
