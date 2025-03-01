@@ -1,0 +1,23 @@
+[project]
+name = "carla-object-detection"
+version = "0.1.0"
+description = "Object detection in CARLA simulator"
+authors = [
+    {name = "Rohan",email = "rohankhaire.work@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10, <4"
+dependencies = [
+    "torch (>=2.6.0,<3.0.0)",
+    "super-gradients (>=3.7.1,<4.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)",
+    "wandb (>=0.19.7,<0.20.0)",
+    "matplotlib (>=3.10.1,<4.0.0)",
+    "pycocotools (>=2.0.8,<3.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
