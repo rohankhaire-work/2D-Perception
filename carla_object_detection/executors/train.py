@@ -47,10 +47,12 @@ class YOLONASLoss(nn.Module):
         :return: Total batch loss (bbox loss + class loss)
         """
         pred_boxes, pred_scores = outputs
+        print(outputs)
         if isinstance(pred_boxes, tuple):
+            conf_scores = pred_boxes[1]
             pred_boxes = pred_boxes[0]
         if isinstance(pred_scores, tuple):
-            pred_scores = pred_scores[0]
+            label_scores = pred_scores[0]
 
         device = pred_boxes.device  # Ensure everything runs on GPU if available
 
@@ -73,19 +75,20 @@ class YOLONASLoss(nn.Module):
 
             # Select top-k predictions for this image
             num_gt = gt_bboxes.shape[0]
-            num_pred = pred_boxes.shape[1]  # Number of predictions per image
+            # Number of predictions per image
+            num_pred = pred_boxes[i].shape[1]
             # Ensure we don't select more than available predictions
             k = min(num_gt, num_pred)
 
             # Select top-k predictions based on confidence scores
             if num_pred > k:
                 topk_indices = torch.argsort(
-                    pred_scores[i, :, 0], descending=True)[:k]
+                    conf_scores[i, :, 0], descending=True)[:k]
                 selected_pred_bboxes = pred_boxes[i, topk_indices, :]
-                selected_pred_scores = pred_scores[i, topk_indices, :]
+                selected_pred_scores = conf_scores[i, topk_indices, :]
             else:
                 selected_pred_bboxes = pred_boxes[i, :num_gt, :]
-                selected_pred_scores = pred_scores[i, :num_gt, :]
+                selected_pred_scores = conf_scores[i, :num_gt, :]
 
             # Append data to lists
             all_gt_bboxes.append(gt_bboxes)
