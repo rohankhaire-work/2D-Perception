@@ -22,12 +22,12 @@ training:
     patience: 4
 
 data:
-  train_dir: "data/train"
-  val_dir: "data/val"
-  test_dir: "data/test"
-  train_annotation: "data/train/train_annotations.json"
-  val_annotation: "data/val/val_annotations.json"
-  test_annotation: "data/test/test_annotations.json"
+  train_dir: "data/carla_data/train"
+  val_dir: "data/carla_data/val"
+  test_dir: "data/carla_data/test"
+  train_annotation: "data/carla_data/train/train_annotations.json"
+  val_annotation: "data/carla_data/val/val_annotations.json"
+  test_annotation: "data/carla_data/test/test_annotations.json"
   augmentation:
     resize: 512
     normalize: true

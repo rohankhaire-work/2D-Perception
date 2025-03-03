@@ -33,63 +33,83 @@ class EarlyStopping:
 class YOLONASLoss(nn.Module):
     def __init__(self, bbox_weight=5.0, cls_weight=1.0):
         super(YOLONASLoss, self).__init__()
-        self.bbox_loss = nn.MSELoss()  # Bounding box regression loss
-        self.cls_loss = nn.CrossEntropyLoss()  # Classification loss
+        # Summed loss for efficiency
+        self.bbox_loss = nn.MSELoss(reduction='sum')
+        self.cls_loss = nn.CrossEntropyLoss(reduction='sum')
         self.bbox_weight = bbox_weight
         self.cls_weight = cls_weight
 
     def forward(self, outputs, targets):
         """
-        Compute YOLO-NAS loss for the entire batch
+        Compute YOLO-NAS loss for the entire batch.
         :param outputs: Tuple (pred_boxes, pred_scores)
-        :param targets: List of lists, where each list contains multiple dicts
-                        [{"bboxes": Tensor, "labels": Tensor}, ...] for each image.
+        :param targets: List of lists containing ground truth data for each image.
         :return: Total batch loss (bbox loss + class loss)
         """
-        pred_boxes, pred_scores = outputs  # Unpack model predictions
+        pred_boxes, pred_scores = outputs
+        if isinstance(pred_boxes, tuple):
+            pred_boxes = pred_boxes[0]
+        if isinstance(pred_scores, tuple):
+            pred_scores = pred_scores[0]
 
-        bbox_loss_total = 0.0
-        cls_loss_total = 0.0
-        batch_size = len(targets)
+        device = pred_boxes.device  # Ensure everything runs on GPU if available
 
-        for i in range(batch_size):
-            image_targets = targets[i]  # List of dicts for this image
+        all_gt_bboxes = []
+        all_gt_labels = []
+        all_pred_bboxes = []
+        all_pred_scores = []
 
-            if not isinstance(image_targets, list) or len(image_targets) == 0:
-                continue  # Skip if there are no objects in this image
+        for i, image_targets in enumerate(targets):
+            if not image_targets:
+                continue  # Skip images with no objects
 
-            # Collect all bounding boxes and labels for this image
-            gt_bboxes = []
-            gt_labels = []
+            # Extract ground truth boxes and labels
+            gt_bboxes = torch.tensor(
+                [obj["bbox"] for obj in image_targets], dtype=torch.float32, device=device
+            )
+            gt_labels = torch.tensor(
+                [obj["category_id"] for obj in image_targets], dtype=torch.long, device=device
+            )
 
-            for obj in image_targets:
-                if "bbox" in obj and "category_id" in obj:
-                    gt_bboxes.append(obj["bbox"])
-                    gt_labels.append(obj["category_id"])
+            # Select top-k predictions for this image
+            num_gt = gt_bboxes.shape[0]
+            num_pred = pred_boxes.shape[1]  # Number of predictions per image
+            # Ensure we don't select more than available predictions
+            k = min(num_gt, num_pred)
 
-            if len(gt_bboxes) == 0:
-                continue  # No valid objects in this image
+            # Select top-k predictions based on confidence scores
+            if num_pred > k:
+                topk_indices = torch.argsort(
+                    pred_scores[i, :, 0], descending=True)[:k]
+                selected_pred_bboxes = pred_boxes[i, topk_indices, :]
+                selected_pred_scores = pred_scores[i, topk_indices, :]
+            else:
+                selected_pred_bboxes = pred_boxes[i, :num_gt, :]
+                selected_pred_scores = pred_scores[i, :num_gt, :]
 
-            # Convert lists to tensors
-            gt_bboxes = torch.stack(gt_bboxes).to(
-                pred_boxes.device)  # Shape: (num_objects, 4)
-            gt_labels = torch.tensor(gt_labels, dtype=torch.long).to(
-                pred_scores.device)  # Shape: (num_objects,)
+            # Append data to lists
+            all_gt_bboxes.append(gt_bboxes)
+            all_gt_labels.append(gt_labels)
+            all_pred_bboxes.append(selected_pred_bboxes)
+            all_pred_scores.append(selected_pred_scores)
 
-            # Ensure predictions match the number of ground truth objects
-            pred_bboxes = pred_boxes[i, :gt_bboxes.shape[0], :]
-            pred_cls_scores = pred_scores[i, :gt_labels.shape[0], :]
+        if not all_gt_bboxes:
+            # No objects, return zero loss
+            return torch.tensor(0.0, device=device)
 
-            # Compute losses
-            bbox_loss = self.bbox_loss(pred_bboxes, gt_bboxes)
-            cls_loss = self.cls_loss(pred_cls_scores, gt_labels)
+        # Stack all data
+        gt_bboxes = torch.cat(all_gt_bboxes, dim=0)
+        gt_labels = torch.cat(all_gt_labels, dim=0)
+        pred_bboxes = torch.cat(all_pred_bboxes, dim=0)
+        pred_scores = torch.cat(all_pred_scores, dim=0)
 
-            bbox_loss_total += bbox_loss
-            cls_loss_total += cls_loss
+        # Compute losses
+        bbox_loss = self.bbox_loss(pred_bboxes, gt_bboxes)
+        cls_loss = self.cls_loss(pred_scores, gt_labels)
 
-        # Normalize loss by batch size
-        total_loss = (self.bbox_weight * bbox_loss_total +
-                      self.cls_weight * cls_loss_total) / batch_size
+        # Normalize by batch size (avoiding division by zero)
+        total_loss = (self.bbox_weight * bbox_loss +
+                      self.cls_weight * cls_loss) / max(1, len(targets))
         return total_loss
 
 
@@ -158,11 +178,20 @@ def train_model(model, train_loader, valid_loader, optimizer,
             progress_bar.set_postfix({"Train Loss": loss.item()})
 
             # Collect predictions & ground truth for mAP calculation
-            train_predictions.append(
-                {"boxes": outputs[:, :4], "scores": outputs[:, 4],
-                 "labels": outputs[:, 5].int()})
-            train_targets.append(
-                {"boxes": targets[:, :4], "labels": targets[:, 4].int()})
+            pred_boxes, pred_scores = outputs
+
+            # Determine class probabilities and max scores
+            class_probs = torch.softmax(pred_scores[0], dim=-1)
+            max_scores, pred_labels = torch.max(class_probs, dim=-1)
+
+            train_predictions.append({
+                "boxes": pred_boxes[0],
+                "scores": max_scores,
+                "labels": pred_labels.int()})
+
+            for t in targets[0]:
+                train_targets.append(
+                    {"boxes": t["bbox"], "labels": t["category_id"]})
 
         # Compute mAP on training set
         metric.update(train_predictions, train_targets)

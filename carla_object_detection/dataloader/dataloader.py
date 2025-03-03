@@ -7,9 +7,8 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
+
 # Function to resize bounding boxes after image resizing
-
-
 def resize_boxes(targets, orig_size, new_size):
     ratio_w = new_size[0] / orig_size[0]
     ratio_h = new_size[1] / orig_size[1]
