@@ -49,10 +49,11 @@ def evaluate_model(model, data_loader):
 
             # Prccess the Prediction and Target
             gt_boxes, gt_labels = process_groundtruth(targets)
-            pred_boxes, _, logits = process_prediction(outputs)
+            pred_boxes, pred_scores, logits = process_prediction(outputs)
             # Calculate loss
             # loss conssit of regression and classification
-            loss = compute_loss(pred_boxes, logits, gt_boxes, gt_labels)
+            loss = compute_loss(pred_boxes, pred_scores,
+                                logits, gt_boxes, gt_labels)
 
             val_loss += loss
 
@@ -81,12 +82,13 @@ def train_model(model, train_loader, valid_loader, optimizer,
             outputs = model(inputs)
 
             # Prccess the Prediction and Target
-            pred_boxes, _, logits = process_prediction(outputs)
+            pred_boxes, pred_scores, logits = process_prediction(outputs)
             gt_boxes, gt_labels = process_groundtruth(targets)
 
             # Calculate loss
             # loss conssit of regression and classification
-            loss = compute_loss(pred_boxes, logits, gt_boxes, gt_labels)
+            loss = compute_loss(pred_boxes, pred_scores,
+                                logits, gt_boxes, gt_labels)
 
             # Backward pass
             optimizer.zero_grad()
