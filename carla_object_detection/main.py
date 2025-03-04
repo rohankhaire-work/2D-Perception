@@ -75,11 +75,11 @@ early_stopping = EarlyStopping(patience=patience, min_delta=0.001,
                                save_path=save_path + "/best_model.pth")
 
 # Start training
-train_losses, val_losses, valid_maps = train_model(
+train_losses, val_losses = train_model(
     model, train_loader, val_loader, optimizer,
     epochs=n_epochs, early_stopping=early_stopping, wandb_log=use_wandb)
 
-plot_learning_curve(train_losses, val_losses, valid_maps)
+# plot_learning_curve(train_losses, val_losses)
 
 # Evaluate model on test data
 test_dataset = CarlaObjects(root=test_path,
@@ -87,10 +87,9 @@ test_dataset = CarlaObjects(root=test_path,
 
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 # Initiate loss function
-loss_function = YOLONASLoss()
-metric = MeanAveragePrecision(iou_thresholds=[0.5, 0.75])
+
 # Test the model
-test_loss, test_map = evaluate_model(model, test_loader, loss_function, metric)
+test_loss, test_map = evaluate_model(model, test_loader)
 
 print("Test loss: ", test_loss)
 print("test accuracy: ", test_map)
