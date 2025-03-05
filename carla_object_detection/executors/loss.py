@@ -9,11 +9,11 @@ def compute_loss(pred_boxes, pred_scores, logits, gt_boxes, gt_labels, epoch):
     batch_obj_loss = 0.0
 
     # Weights for CIOU and focal loss
-    lambda_ciou = 1.5
-    lambda_focal = 1.2
-    lambda_obj = 1.5
+    lambda_ciou = 2.0
+    lambda_focal = 2.5
+    lambda_obj = 2.5
     # Initiate Focal loss
-    focal_loss_fn = FocalLoss(gamma=1.0, alpha=0.25)
+    focal_loss_fn = FocalLoss(gamma=2.0, alpha=0.25)
 
     device = pred_boxes.device
     # Compute loss over the batch size

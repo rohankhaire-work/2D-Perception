@@ -19,7 +19,7 @@ training:
   save_path: "checkpoint/custom"
   early_stopping:
     monitor: val_loss
-    patience: 50
+    patience: 5
 
 data:
   train_dir: "data/carla_data/train"
