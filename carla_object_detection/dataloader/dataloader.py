@@ -1,9 +1,10 @@
 from torchvision.datasets import CocoDetection
 import torchvision.transforms as transforms
 
+IMG_X, IMG_Y = 512, 512
 # Define image transform (resize and convert to tensor)
 transform = transforms.Compose([
-    transforms.Resize((512, 512)),  # Resize all images to 512x512
+    transforms.Resize((IMG_X, IMG_Y)),  # Resize all images to 512x512
     transforms.ToTensor()
 ])
 
@@ -34,6 +35,6 @@ class CarlaObjects(CocoDetection):
         img = transform(img)
 
         # Resize bounding boxes to match new image size
-        target = resize_boxes(target, orig_size, (512, 512))
+        target = resize_boxes(target, orig_size, (IMG_X, IMG_Y))
 
         return img, target

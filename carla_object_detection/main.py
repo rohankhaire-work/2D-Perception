@@ -6,7 +6,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from super_gradients.training import models
 from executors.train import EarlyStopping, train_model, \
     evaluate_model, YOLONASLoss
-from utils.plot import plot_learning_curve
+from utils.utility_func import plot_learning_curve
 
 import yaml
 import os
@@ -41,6 +41,7 @@ save_path = config["training"]["save_path"]
 
 # Data params
 resize = config["data"]["augmentation"]["resize"]
+img_size = (resize, resize)
 
 # training params
 weight_decay = config["model"]["hyperparameters"]["optimizer"]["weight_decay"]
@@ -77,7 +78,7 @@ early_stopping = EarlyStopping(patience=patience, min_delta=0.001,
 # Start training
 train_losses, val_losses = train_model(
     model, train_loader, val_loader, optimizer,
-    epochs=n_epochs, early_stopping=early_stopping, wandb_log=use_wandb)
+    epochs=n_epochs, img_size=img_size, early_stopping=early_stopping, wandb_log=use_wandb)
 
 # plot_learning_curve(train_losses, val_losses)
 

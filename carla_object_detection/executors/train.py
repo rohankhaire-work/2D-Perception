@@ -36,7 +36,7 @@ class EarlyStopping:
         return False
 
 
-def evaluate_model(model, data_loader):
+def evaluate_model(model, data_loader, epoch, img_size):
     model.eval()  # Set model to evaluation mode
     val_loss = 0.0
 
@@ -48,12 +48,13 @@ def evaluate_model(model, data_loader):
             outputs = model(inputs)
 
             # Prccess the Prediction and Target
-            gt_boxes, gt_labels = process_groundtruth(targets)
-            pred_boxes, pred_scores, logits = process_prediction(outputs)
+            gt_boxes, gt_labels = process_groundtruth(targets, img_size)
+            pred_boxes, pred_scores, logits = process_prediction(
+                outputs, img_size)
             # Calculate loss
             # loss conssit of regression and classification
             loss = compute_loss(pred_boxes, pred_scores,
-                                logits, gt_boxes, gt_labels)
+                                logits, gt_boxes, gt_labels, epoch)
 
             val_loss += loss
 
@@ -63,7 +64,7 @@ def evaluate_model(model, data_loader):
 
 
 def train_model(model, train_loader, valid_loader, optimizer,
-                epochs, early_stopping=None, wandb_log=None):
+                epochs, img_size, early_stopping=None, wandb_log=None):
 
     train_losses, valid_losses = [], []
 
@@ -77,18 +78,23 @@ def train_model(model, train_loader, valid_loader, optimizer,
 
         for batch_idx, (inputs, targets) in progress_bar:
             inputs = inputs.to(device)
-
             # Forward pass
             outputs = model(inputs)
 
             # Prccess the Prediction and Target
-            pred_boxes, pred_scores, logits = process_prediction(outputs)
-            gt_boxes, gt_labels = process_groundtruth(targets)
+            pred_boxes, pred_scores, logits = process_prediction(
+                outputs, img_size)
+            gt_boxes, gt_labels = process_groundtruth(targets, img_size)
 
             # Calculate loss
             # loss conssit of regression and classification
             loss = compute_loss(pred_boxes, pred_scores,
-                                logits, gt_boxes, gt_labels)
+                                logits, gt_boxes, gt_labels, epoch)
+            if isinstance(loss, float):
+                print("Value is a Python float")
+                print(loss)
+                loss = torch.tensor(
+                    0.0, requires_grad=True)
 
             # Backward pass
             optimizer.zero_grad()
@@ -104,7 +110,7 @@ def train_model(model, train_loader, valid_loader, optimizer,
 
         # Validation step
         val_loss = evaluate_model(
-            model, valid_loader)
+            model, valid_loader, epoch, img_size)
         valid_losses.append(val_loss)
 
         # Print epoch summary
