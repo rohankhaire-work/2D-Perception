@@ -1,5 +1,6 @@
 from utils.utility_func import compute_iou
 import torch
+from torchvision.ops import complete_box_iou_loss, distance_box_iou_loss, box_iou
 
 
 def iou_loss(pred_boxes, gt_boxes):
@@ -7,7 +8,7 @@ def iou_loss(pred_boxes, gt_boxes):
 
     iou = compute_iou(pred_boxes, gt_boxes)
 
-    return 1 - iou  # Loss = 1 - iou_loss
+    return 1 - iou.mean()  # Loss = 1 - iou_loss
 
 
 def ciou_loss(pred_boxes, gt_boxes):
@@ -21,93 +22,39 @@ def ciou_loss(pred_boxes, gt_boxes):
     Returns:
         Tensor: CIoU loss (N, M)
     """
+    if (gt_boxes.size(0) == 0):
+        loss = torch.tensor(0.0, requires_grad=True)
+        return loss
 
     iou_threshold = 0.3
-    with torch.no_grad():
-        iou = compute_iou(pred_boxes, gt_boxes)
+
+    iou = box_iou(pred_boxes, gt_boxes)
     # Get the best prediction index for each GT box
     best_iou, best_gt_idx = iou.max(dim=1)  # (M,)
 
     # Mask for matched predictions (IoU above threshold)
     matched_mask = best_iou > iou_threshold
     matched_pred_boxes = pred_boxes[matched_mask]  # Select matched predictions
-    # matched_gt_boxes = gt_boxes[best_gt_idx[matched_mask]]  # Corresponding GTs
+    matched_gt_boxes = gt_boxes[best_gt_idx[matched_mask]]  # Corresponding GTs
 
     # Compute CIoU loss for matched predictions
     if matched_pred_boxes.shape[0] > 0:
-        ciou_loss_value = compute_ciou_loss(
-            matched_pred_boxes, gt_boxes).mean()
+        ciou_loss_value = complete_box_iou_loss(
+            matched_pred_boxes, matched_gt_boxes, reduction="mean")
+
+        # print("CIOUD LOSS:", ciou_loss_value)
     else:
         # If there are no over laps the nwe apply IOU loss
-        ciou_loss_value = iou_loss(pred_boxes, gt_boxes).mean()
 
-    # Combine all losses
-    total_loss = ciou_loss_value
-    return total_loss, matched_mask
+        l1_distances = torch.cdist(
+            pred_boxes, gt_boxes, p=1)  # (N, M) L1 distances
+        best_l1_idx = torch.argmin(l1_distances, dim=1)  # (N,)
+        matched_gt_boxes = gt_boxes[best_l1_idx]
+        final_iou_loss = (1 - iou.mean())
+        # print("IOU LOSS: ", final_iou_loss)
+        final_l1_loss = torch.nn.functional.l1_loss(
+            pred_boxes, matched_gt_boxes).mean()
+        # print("L1 LOSS: ", final_l1_loss)
+        ciou_loss_value = final_l1_loss + final_iou_loss
 
-
-def compute_ciou_loss(pred_boxes, gt_boxes):
-    """
-    Compute the Complete IoU (CIoU) loss between predicted (N,4) and ground truth (M,4) boxes.
-
-    Args:
-        pred_boxes (Tensor): Predicted bounding boxes (N, 4) in [xmin, ymin, xmax, ymax] format.
-        gt_boxes (Tensor): Ground truth bounding boxes (M, 4) in [xmin, ymin, xmax, ymax] format.
-
-    Returns:
-        Tensor: CIoU loss (N, M)
-    """
-
-    # Expand dimensions for broadcasting
-    pred_boxes = pred_boxes[:, None, :]  # (N, 1, 4)
-    gt_boxes = gt_boxes[None, :, :]      # (1, M, 4)
-
-    # Unpack coordinates
-    x1_p, y1_p, x2_p, y2_p = pred_boxes[..., 0], pred_boxes[..., 1], \
-        pred_boxes[..., 2], pred_boxes[..., 3]
-    x1_g, y1_g, x2_g, y2_g = gt_boxes[..., 0], gt_boxes[..., 1], \
-        gt_boxes[..., 2], gt_boxes[..., 3]
-
-    # Compute intersection
-    x1_i = torch.max(x1_p, x1_g)
-    y1_i = torch.max(y1_p, y1_g)
-    x2_i = torch.min(x2_p, x2_g)
-    y2_i = torch.min(y2_p, y2_g)
-
-    inter_area = (x2_i - x1_i).clamp(0) * (y2_i - y1_i).clamp(0)
-    pred_area = (x2_p - x1_p) * (y2_p - y1_p)
-    gt_area = (x2_g - x1_g) * (y2_g - y1_g)
-
-    # Compute IoU
-    union_area = pred_area + gt_area - inter_area
-    iou = inter_area / (union_area + 1e-6)
-
-    # Compute box centers
-    x_p_center, y_p_center = (x1_p + x2_p) / 2, (y1_p + y2_p) / 2
-    x_g_center, y_g_center = (x1_g + x2_g) / 2, (y1_g + y2_g) / 2
-
-    # Compute squared Euclidean distance between centers
-    rho2 = (x_p_center - x_g_center) ** 2 + (y_p_center - y_g_center) ** 2
-
-    # Compute enclosing box
-    x1_c = torch.min(x1_p, x1_g)
-    y1_c = torch.min(y1_p, y1_g)
-    x2_c = torch.max(x2_p, x2_g)
-    y2_c = torch.max(y2_p, y2_g)
-
-    # Compute diagonal squared length of enclosing box
-    c2 = (x2_c - x1_c) ** 2 + (y2_c - y1_c) ** 2
-
-    # Aspect ratio penalty term
-    w_p, h_p = (x2_p - x1_p).clamp(0), (y2_p - y1_p).clamp(0)
-    w_g, h_g = (x2_g - x1_g).clamp(0), (y2_g - y1_g).clamp(0)
-
-    v = (4 / (torch.pi ** 2)) * \
-        ((torch.atan(w_g / (h_g + 1e-6)) - torch.atan(w_p / (h_p + 1e-6))) ** 2)
-    with torch.no_grad():
-        alpha = v / (1 - iou + v + 1e-6)
-
-    # Compute CIoU
-    ciou = iou - (rho2 / (c2 + 1e-6)) - (alpha * v)
-
-    return 1 - ciou  # CIoU Loss (N, M)
+    return ciou_loss_value

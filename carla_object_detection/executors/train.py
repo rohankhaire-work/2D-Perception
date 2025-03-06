@@ -53,8 +53,10 @@ def evaluate_model(model, data_loader, epoch, img_size):
                 outputs, img_size)
             # Calculate loss
             # loss conssit of regression and classification
+            batch_len = inputs.size(0)
             loss = compute_loss(pred_boxes, pred_scores,
-                                logits, gt_boxes, gt_labels, epoch)
+                                logits, gt_boxes, gt_labels,
+                                epoch, batch_len)
 
             val_loss += loss
 
@@ -88,13 +90,10 @@ def train_model(model, train_loader, valid_loader, optimizer,
 
             # Calculate loss
             # loss conssit of regression and classification
+            batch_len = inputs.size(0)
             loss = compute_loss(pred_boxes, pred_scores,
-                                logits, gt_boxes, gt_labels, epoch)
-            if isinstance(loss, float):
-                print("Value is a Python float")
-                print(loss)
-                loss = torch.tensor(
-                    0.0, requires_grad=True)
+                                logits, gt_boxes, gt_labels,
+                                epoch, batch_len)
 
             # Backward pass
             optimizer.zero_grad()

@@ -14,12 +14,12 @@ model:
 
 training:
   use_wandb: False
-  batch_size: 12
+  batch_size: 16
   epochs: 1000
   save_path: "checkpoint/custom"
   early_stopping:
     monitor: val_loss
-    patience: 5
+    patience: 50
 
 data:
   train_dir: "data/carla_data/train"

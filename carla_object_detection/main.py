@@ -3,6 +3,7 @@ import torch.optim as optim
 from dataloader.dataloader import CarlaObjects
 from torch.utils.data import DataLoader
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
+import torch.optim.lr_scheduler as lr_scheduler
 from super_gradients.training import models
 from executors.train import EarlyStopping, train_model, \
     evaluate_model, YOLONASLoss
@@ -71,6 +72,7 @@ model = models.get("yolo_nas_s", pretrained_weights=None, num_classes=6)
 model.to(device)
 
 optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=1e-3, total_steps=100)
 
 early_stopping = EarlyStopping(patience=patience, min_delta=0.001,
                                save_path=save_path + "/best_model.pth")
@@ -81,16 +83,3 @@ train_losses, val_losses = train_model(
     epochs=n_epochs, img_size=img_size, early_stopping=early_stopping, wandb_log=use_wandb)
 
 # plot_learning_curve(train_losses, val_losses)
-
-# Evaluate model on test data
-test_dataset = CarlaObjects(root=test_path,
-                            annFile=test_annotation)
-
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-# Initiate loss function
-
-# Test the model
-test_loss, test_map = evaluate_model(model, test_loader)
-
-print("Test loss: ", test_loss)
-print("test accuracy: ", test_map)

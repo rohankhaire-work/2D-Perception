@@ -33,14 +33,14 @@ def compute_iou(pred_boxes, gt_boxes):
     x2_i = torch.min(x2_p, x2_g)
     y2_i = torch.min(y2_p, y2_g)
 
-    inter_width = (x2_i - x1_i).clamp(min=0)
-    inter_height = (y2_i - y1_i).clamp(min=0)
+    inter_width = (x2_i - x1_i)
+    inter_height = (y2_i - y1_i)
     inter_area = inter_width * inter_height  # (N, M)
 
     # Compute union
-    pred_area = (x2_p - x1_p).clamp(min=0) * \
-        (y2_p - y1_p).clamp(min=0)  # (N,1)
-    gt_area = (x2_g - x1_g).clamp(min=0) * (y2_g - y1_g).clamp(min=0)  # (1,M)
+    pred_area = (x2_p - x1_p) * \
+        (y2_p - y1_p)  # (N,1)
+    gt_area = (x2_g - x1_g) * (y2_g - y1_g)  # (1,M)
     union_area = pred_area + gt_area - inter_area  # (N, M)
 
     # Compute IoU (add epsilon to avoid division by zero)
@@ -212,3 +212,10 @@ def plot_learning_curve(train_losses, valid_losses, valid_accuracies):
     plt.legend()
 
     plt.show()
+
+
+def log_loss(epoch, batch, total_loss, ciou_loss, l1_iou_loss, obj_loss, cls_loss, log_file):
+    with open(log_file, "a") as f:  # Append mode
+        f.write(f"Epoch: {epoch}, Batch: {batch}, Total Loss: {total_loss:.4f}, "
+                f"CIOU Loss: {ciou_loss:.4f}, L1+IOU Loss: {l1_iou_loss:.4f}, "
+                f"Object Loss: {obj_loss:.4f}, Class Loss: {cls_loss:.4f}\n")

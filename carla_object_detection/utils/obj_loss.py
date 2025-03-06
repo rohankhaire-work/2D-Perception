@@ -1,42 +1,45 @@
-from utils.utility_func import xywh_to_xyxy
 import torch
-import torch.nn as nn
-import torchvision.ops as ops
-from utils.utility_func import compute_iou
+from torchvision.ops import box_iou
 
 
 def obj_loss(pred_boxes, gt_boxes, pred_scores, gt_label):
 
-    device = pred_boxes.device
+    device = pred_scores.device
     # IOU threshold
-    iou_thresh = 0.2
-    # gt_label = gt_label.to(device)
-    # Compute iou
-    iou_mat = compute_iou(pred_boxes, gt_boxes)
-    i, j = torch.where(iou_mat > iou_thresh)
+    iou_thresh = 0.3
 
-    objective_arr = [0] * len(pred_boxes)
+    if len(gt_label) == 0:
+        pred_idx = []
+        gt_idx = []
+    else:
+        iou_mat = box_iou(pred_boxes, gt_boxes)
+        pred_idx, gt_idx = torch.where(iou_mat > iou_thresh)
 
-    for pred_idx, gt_idx in zip(i, j):
-        # Create one hot encoding vector
-        class_label = gt_label[gt_idx]
-        multi_hot = torch.zeros(6, dtype=torch.float32)
-        multi_hot[class_label] = 1
+    one_hot_tensor = torch.zeros(6)
+    final_pred_scores = torch.zeros(6)
+    # If there are no overlapping pred pred boxes
+    # penalize the conf scores of topk boxes
+    if len(pred_idx) == 0:
+        final_pred_scores = pred_scores
+        one_hot_tensor = torch.zeros((len(pred_boxes), 6), dtype=torch.float32)
+        one_hot_tensor = one_hot_tensor.to(device)
+    else:
+        one_hot_array = []
+        final_pred_scores = pred_scores[pred_idx]
+        for i, j in zip(pred_idx, gt_idx):
+            # Create one hot encoding vector
+            class_label = gt_label[j]
+            # There are 6 classes
+            one_hot = torch.zeros(6, dtype=torch.float32)
+            one_hot[class_label] = 1
 
-        if isinstance(objective_arr[pred_idx], torch.Tensor):
-            continue
+            one_hot_array.append(one_hot)
 
-        objective_arr[pred_idx] = multi_hot
+        # Convert to a single tensor
+        one_hot_tensor = torch.stack(one_hot_array)
+        one_hot_tensor = one_hot_tensor.to(device)
 
-    for i, item in enumerate(objective_arr):
-        if isinstance(item, torch.Tensor):
-            continue
-        objective_arr[i] = torch.zeros(6, dtype=torch.float32)
-
-    # Convert to a single tensor
-    final_tensor = torch.stack(objective_arr)
-    final_tensor = final_tensor.to(device)
-    bce_loss = nn.BCELoss()
-    loss = bce_loss(pred_scores, final_tensor)
+    loss = torch.nn.functional.binary_cross_entropy(
+        final_pred_scores, one_hot_tensor)
 
     return loss

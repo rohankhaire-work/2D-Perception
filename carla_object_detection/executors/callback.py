@@ -8,7 +8,7 @@ def process_prediction(preds, img_size):
     pred_bboxes, pred_scores = preds[0]
     cls_logits = preds[1][0]
 
-    nms_top_k = 200
+    nms_top_k = 50
     batch_size, num_anchors, _ = pred_scores.size()
 
     pred_cls_conf, _ = torch.max(pred_scores, dim=2)  # [B, Anchors]
