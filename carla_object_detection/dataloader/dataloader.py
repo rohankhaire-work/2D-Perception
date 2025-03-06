@@ -1,12 +1,4 @@
 from torchvision.datasets import CocoDetection
-import torchvision.transforms as transforms
-
-IMG_X, IMG_Y = 512, 512
-# Define image transform (resize and convert to tensor)
-transform = transforms.Compose([
-    transforms.Resize((IMG_X, IMG_Y)),  # Resize all images to 512x512
-    transforms.ToTensor()
-])
 
 
 # Function to resize bounding boxes after image resizing
@@ -21,20 +13,27 @@ def resize_boxes(targets, orig_size, new_size):
         ann["bbox"][3] *= ratio_h  # Scale height
     return targets
 
+
 # Custom COCO dataset class with bbox scaling
-
-
 class CarlaObjects(CocoDetection):
+    def __init__(self, root, annFile, img_size, transform=None, target_transform=None):
+        super().__init__(root, annFile)  # Initialize COCO dataset
+        self.transform = transform  # Image transformations
+        # Target (bbox) transformations
+        self.target_transform = target_transform
+        self.img_size = img_size
+
     def __getitem__(self, index):
         img, target = super().__getitem__(index)  # Load image & annotations
 
-        # Get original image size before resizing
-        orig_size = img.size  # (width, height)
+        orig_size = img.size  # (width, height) before transforms
 
-        # Apply transformations (resize + convert to tensor)
-        img = transform(img)
+        # Apply image transformations if specified
+        if self.transform:
+            img = self.transform(img)
 
-        # Resize bounding boxes to match new image size
-        target = resize_boxes(target, orig_size, (IMG_X, IMG_Y))
+        # Resize bounding boxes if needed
+        if self.target_transform:
+            target = resize_boxes(target, orig_size, self.img_size)
 
         return img, target

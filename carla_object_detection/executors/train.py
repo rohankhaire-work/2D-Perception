@@ -1,16 +1,10 @@
 from executors.callback import process_prediction, process_groundtruth
 from executors.loss import compute_loss
 import torch
-import torch.nn as nn
 from tqdm import tqdm
 import wandb
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-class YOLONASLoss:
-    def __init__(self):
-        pass
 
 
 class EarlyStopping:
@@ -36,7 +30,7 @@ class EarlyStopping:
         return False
 
 
-def evaluate_model(model, data_loader, epoch, img_size):
+def evaluate_model(model, data_loader, epoch, img_size, num_classes):
     model.eval()  # Set model to evaluation mode
     val_loss = 0.0
 
@@ -56,7 +50,7 @@ def evaluate_model(model, data_loader, epoch, img_size):
             batch_len = inputs.size(0)
             loss = compute_loss(pred_boxes, pred_scores,
                                 logits, gt_boxes, gt_labels,
-                                epoch, batch_len)
+                                epoch, batch_len, num_classes)
 
             val_loss += loss
 
@@ -65,8 +59,9 @@ def evaluate_model(model, data_loader, epoch, img_size):
     return val_loss
 
 
-def train_model(model, train_loader, valid_loader, optimizer,
-                epochs, img_size, early_stopping=None, wandb_log=None):
+def train_model(model, train_loader, valid_loader, optimizer, scheduler,
+                epochs, img_size, num_classes, early_stopping=None,
+                wandb_log=None):
 
     train_losses, valid_losses = [], []
 
@@ -93,7 +88,7 @@ def train_model(model, train_loader, valid_loader, optimizer,
             batch_len = inputs.size(0)
             loss = compute_loss(pred_boxes, pred_scores,
                                 logits, gt_boxes, gt_labels,
-                                epoch, batch_len)
+                                epoch, batch_len, num_classes)
 
             # Backward pass
             optimizer.zero_grad()
@@ -105,12 +100,12 @@ def train_model(model, train_loader, valid_loader, optimizer,
 
         # Record training loss
         train_loss = running_loss / len(train_loader)
-        train_losses.append(train_loss)
+        train_losses.append(train_loss.detach().cpu())
 
         # Validation step
-        val_loss = evaluate_model(
-            model, valid_loader, epoch, img_size)
-        valid_losses.append(val_loss)
+        val_loss = evaluate_model(model, valid_loader, epoch,
+                                  img_size, num_classes)
+        valid_losses.append(val_loss.detach().cpu())
 
         # Print epoch summary
         print(f"Epoch {epoch+1}: Train Loss={train_loss: .4f}, \

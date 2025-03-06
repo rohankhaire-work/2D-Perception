@@ -6,8 +6,8 @@ from glob import glob
 
 def yolo_to_coco(image_folder, label_folder, output_json):
     # Define class names (modify this for your dataset)
-    classes = ["vehicle", "motorbike", "bike",
-               "traffic_light", "traffic_sign", "pedestrian"]
+    classes = ["bike", "motobike", "person", "traffic_light_green", "traffic_light_orange",
+               "traffic_light_red", "traffic_sign_30", "traffic_sign_60", "traffic_sign_90", "vehicle"]
 
     # Get all label files
     label_files = glob(os.path.join(label_folder, "*.txt"))
@@ -39,7 +39,7 @@ def yolo_to_coco(image_folder, label_folder, output_json):
             continue
 
         # Taken from metadata
-        width, height = 800, 600
+        width, height = 416, 416
 
         # Add image info to COCO JSON
         coco_data["images"].append({

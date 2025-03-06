@@ -2,8 +2,7 @@ import torch
 from torchvision.ops import box_iou
 
 
-def obj_loss(pred_boxes, gt_boxes, pred_scores, gt_label):
-
+def obj_loss(pred_boxes, gt_boxes, pred_scores, gt_label, num_classes):
     device = pred_scores.device
     # IOU threshold
     iou_thresh = 0.3
@@ -21,7 +20,8 @@ def obj_loss(pred_boxes, gt_boxes, pred_scores, gt_label):
     # penalize the conf scores of topk boxes
     if len(pred_idx) == 0:
         final_pred_scores = pred_scores
-        one_hot_tensor = torch.zeros((len(pred_boxes), 6), dtype=torch.float32)
+        one_hot_tensor = torch.zeros(
+            (len(pred_boxes), num_classes), dtype=torch.float32)
         one_hot_tensor = one_hot_tensor.to(device)
     else:
         one_hot_array = []
@@ -30,7 +30,7 @@ def obj_loss(pred_boxes, gt_boxes, pred_scores, gt_label):
             # Create one hot encoding vector
             class_label = gt_label[j]
             # There are 6 classes
-            one_hot = torch.zeros(6, dtype=torch.float32)
+            one_hot = torch.zeros(num_classes, dtype=torch.float32)
             one_hot[class_label] = 1
 
             one_hot_array.append(one_hot)

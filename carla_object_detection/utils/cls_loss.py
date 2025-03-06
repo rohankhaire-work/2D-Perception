@@ -2,7 +2,8 @@ import torch
 from torchvision.ops import box_iou, sigmoid_focal_loss
 
 
-def compute_cls_loss(pred_boxes, gt_boxes, logits, gt_label):
+def compute_cls_loss(pred_boxes, gt_boxes, logits, gt_label, num_classes):
+
     device = logits.device
     if len(gt_label) == 0:
         loss = torch.tensor(0.0, requires_grad=True, device=device)
@@ -23,7 +24,7 @@ def compute_cls_loss(pred_boxes, gt_boxes, logits, gt_label):
         # Create one hot encoding vector
         class_label = gt_label[j]
         # There are 6 classes
-        one_hot = torch.zeros(6, dtype=torch.float32)
+        one_hot = torch.zeros(num_classes, dtype=torch.float32)
         one_hot[class_label] = 1
 
         one_hot_array.append(one_hot)

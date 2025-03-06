@@ -1,7 +1,7 @@
 # model_hyperparameters.yaml
 model:
   dataset: CARLA object detection
-  name: YOLO_NAS_nano
+  name: YOLO_NAS_small
   hyperparameters:
     optimizer:
       type: AdamW
@@ -19,15 +19,16 @@ training:
   save_path: "checkpoint/custom"
   early_stopping:
     monitor: val_loss
-    patience: 50
+    patience: 10
 
 data:
-  train_dir: "data/carla_data/train"
-  val_dir: "data/carla_data/val"
-  test_dir: "data/carla_data/test"
+  train_dir: "data/carla_data/train/images"
+  val_dir: "data/carla_data/valid/images"
+  test_dir: "data/carla_data/test/images"
   train_annotation: "data/carla_data/train/train_annotations.json"
-  val_annotation: "data/carla_data/val/val_annotations.json"
+  val_annotation: "data/carla_data/valid/val_annotations.json"
   test_annotation: "data/carla_data/test/test_annotations.json"
+  classes: 10
   augmentation:
-    resize: 512
+    resize: 416
     normalize: true
