@@ -46,6 +46,7 @@ resize = config["data"]["augmentation"]["resize"]
 img_size = (resize, resize)
 
 # training params
+use_checkpoint = config["training"]["use_checkpoint"]
 weight_decay = config["model"]["hyperparameters"]["optimizer"]["weight_decay"]
 lr = config["model"]["hyperparameters"]["optimizer"]["learning_rate"]
 patience = config["training"]["early_stopping"]["patience"]
@@ -83,11 +84,15 @@ if not os.path.exists(save_path):
 # Use YOLO NAS nano
 model = models.get("yolo_nas_s", pretrained_weights=None,
                    num_classes=num_classes)
+if use_checkpoint:
+    state_dict = torch.load(use_checkpoint, map_location="cpu")
+    model.load_state_dict(state_dict)
+
 model.to(device)
 
 optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=1e-3, total_steps=100)
-
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='min', factor=0.1, patience=4, verbose=True)
 early_stopping = EarlyStopping(patience=patience, min_delta=0.001,
                                save_path=save_path + "/best_model.pth")
 

@@ -107,6 +107,8 @@ def train_model(model, train_loader, valid_loader, optimizer, scheduler,
                                   img_size, num_classes)
         valid_losses.append(val_loss.detach().cpu())
 
+        scheduler.step(val_loss)
+
         # Print epoch summary
         print(f"Epoch {epoch+1}: Train Loss={train_loss: .4f}, \
                 Val Loss={val_loss: .4f}")
