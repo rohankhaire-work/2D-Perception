@@ -1,0 +1,42 @@
+# model_hyperparameters.yaml
+model:
+  dataset: CARLA object detection
+  name: YOLO_NAS_small
+  hyperparameters:
+    optimizer:
+      type: AdamW
+      learning_rate: 0.00261
+      weight_decay: 0.0005
+    loss: crossentropy
+    metrics:
+      - accuracy
+      - top_k_categorical_accuracy
+
+training:
+  use_checkpoint : 
+  use_wandb: False
+  batch_size: 32
+  epochs: 1000
+  save_path: "checkpoint/custom"
+  early_stopping:
+    monitor: val_loss
+    patience: 10000
+
+data:
+  train_dir: "data/carla_data/train/images"
+  val_dir: "data/carla_data/valid/images"
+  test_dir: "data/carla_data/test/images"
+  train_annotation: "data/carla_data/train/train_annotations.json"
+  val_annotation: "data/carla_data/valid/val_annotations.json"
+  test_annotation: "data/carla_data/test/test_annotations.json"
+  classes: 10
+  augmentation:
+    resize: 416
+    normalize: true
+
+inference:
+  checkpoint_path: "checkpoint/custom/best_model.pth"
+  resize: 416
+  conf_threshold: 0.3
+  nms_threshold: 0.8
+  num_classes: 10
