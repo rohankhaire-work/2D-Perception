@@ -366,7 +366,7 @@ class Darknet(nn.Module):
                                                ] + out_filters[layers[1]]
                     prev_stride = out_strides[layers[0]]
                 elif len(layers) == 4:
-                    # assert (layers[0] == ind - 1)
+                    assert (layers[0] == ind - 1)
                     prev_filters = out_filters[layers[0]] + out_filters[layers[1]] + out_filters[layers[2]] + \
                         out_filters[layers[3]]
                     prev_stride = out_strides[layers[0]]
