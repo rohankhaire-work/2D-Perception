@@ -1,0 +1,25 @@
+# model_hyperparameters.yaml
+model:
+  dataset: KittiDisparity
+  name: CNN
+  hyperparameters:
+    optimizer:
+      type: Adam
+      learning_rate: 0.001
+      momentum: 0.9
+
+training:
+  milestones: [100,200,300,400,500,550,600,650,700]
+  batch_size: 8
+  epochs: 100
+  save_path: "checkpoint/custom"
+  early_stopping:
+    monitor: d1_loss
+    patience: 5
+
+data:
+  directory_root: "data"
+  train_input_files: "data/kitti_2015_train_inputs_lr_sgm.txt"
+  train_target_files: "data/kitti_2015_train_targets.txt"
+  test_input_files: "data/kitti_2012_train_inputs_lr_sgm.txt"
+  test_target_files: "data/kitti_2012_train_targets.txt"
