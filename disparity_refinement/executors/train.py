@@ -53,11 +53,8 @@ def train(model, optimizer, epoch, train_loader):
         # Target depth
         target = target_data[0]
 
-        # We only compute error on non-zero pixels
-        mask = target > 0
-
         # We only compute error on non-zero pixels (i.e. non 1 here)
-        error_disp = F.l1_loss(output_disp[mask], target[mask])
+        error_disp = combined_berhu_smoothl1_loss(output_disp, target)
 
         # loss
         total_loss_disp += error_disp.item()
@@ -164,3 +161,26 @@ def train_network(model, optimizer, scheduler, epochs, train_loader, test_loader
         if early_stopping and early_stopping(d1_cnn, model):
             print("[INFO] Early stopping triggered.")
             break
+
+
+def combined_berhu_smoothl1_loss(pred, gt, alpha=0.5):
+    # Valid disparity mask
+    mask = gt > 0
+    pred = pred[mask]
+    gt = gt[mask]
+
+    if pred.numel() == 0:
+        return torch.tensor(0.0, device=pred.device, requires_grad=True)
+
+    # Smooth L1
+    smooth_l1 = F.smooth_l1_loss(pred, gt, reduction='mean')
+
+    # BerHu
+    diff = torch.abs(pred - gt)
+    c = 0.2 * diff.max().item()
+    berhu = torch.where(diff <= c, diff, (diff ** 2 + c ** 2) / (2 * c))
+    berhu_loss = berhu.mean()
+
+    # Combine
+    total_loss = alpha * smooth_l1 + (1 - alpha) * berhu_loss
+    return total_loss

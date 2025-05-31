@@ -31,7 +31,6 @@ def input_sgm(data_path):
     im = cv2.imread(data_path, cv2.IMREAD_ANYDEPTH)
     h, w = im.shape
     max_disp = 192
-
     # Convert to float
     disp_float = im.astype(np.float32) / 256.0
 

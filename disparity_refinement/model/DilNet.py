@@ -64,12 +64,8 @@ class DilNetLRDisp(nn.Module):
     def forward(self, in_img):
         """Forward method."""
 
-        # img = torch.cat((in_img[0],in_img[1],in_img[2]),1)
-
-        img = torch.cat((in_img[:]), 1)
-
         # Stage 1
-        x0 = F.relu(self.conv0(img))
+        x0 = F.relu(self.conv0(in_img))
         x = F.relu(self.conv1(x0))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -81,7 +77,7 @@ class DilNetLRDisp(nn.Module):
         x = F.relu(self.conv9(x))
         x = torch.cat((x0, x), 1)
         x = F.relu(self.conv10(x))
-        x = torch.cat((img, x), 1)
+        x = torch.cat((in_img, x), 1)
         x = F.relu(self.conv11(x))
         x = F.relu(self.conv12(x))
         x = F.relu(self.conv121(x))

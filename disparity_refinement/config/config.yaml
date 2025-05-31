@@ -11,11 +11,11 @@ model:
 training:
   milestones: [100,200,300,400,500,550,600,650,700]
   batch_size: 8
-  epochs: 100
+  epochs: 750
   save_path: "checkpoint/custom"
   early_stopping:
     monitor: d1_loss
-    patience: 5
+    patience: 1000
 
 data:
   directory_root: "data"
