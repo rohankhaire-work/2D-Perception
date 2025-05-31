@@ -3,4 +3,5 @@ wandb/
 checkpoint/
 poetry.lock
 .venv
-data/
+data/data_scene_flow
+data/data_stereo_flow
