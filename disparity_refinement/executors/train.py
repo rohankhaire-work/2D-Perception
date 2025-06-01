@@ -30,6 +30,10 @@ class EarlyStopping:
 
 def train(model, optimizer, epoch, train_loader):
 
+    dataset_mean = 30.5 * (512. / 1242.)
+    dataset_std = 7.5 * (512. / 1242.)
+
+    zero_disp = -1. * (dataset_mean / dataset_std)
     total_loss_disp = 0
 
     img_counter = 0
@@ -41,8 +45,7 @@ def train(model, optimizer, epoch, train_loader):
                         total=len(train_loader))
 
     for batch_idx, (input_data, target_data) in progress_bar:
-        concat_data = torch.cat((input_data[:]), 1)
-        input_data = concat_data.cuda()
+        input_data = [inp_data.cuda() for inp_data in input_data]
         target_data = [ta_data.cuda() for ta_data in target_data]
 
         # Disp Map Prediction
@@ -54,7 +57,9 @@ def train(model, optimizer, epoch, train_loader):
         target = target_data[0]
 
         # We only compute error on non-zero pixels (i.e. non 1 here)
-        error_disp = combined_berhu_smoothl1_loss(output_disp, target)
+        mask = target > zero_disp
+        error_disp = combined_berhu_smoothl1_loss(
+            output_disp[mask], target[mask])
 
         # loss
         total_loss_disp += error_disp.item()
@@ -78,6 +83,8 @@ def test(model, epoch, test_loader):
     dt = 0.
     d1_cnn = 0.
 
+    dataset_std = 7.5 * (512. / 1242.)
+    dataset_mean = 30.5 * (512. / 1242.)
     min_disp = 0.0
     max_disp = 192.0
 
@@ -86,8 +93,7 @@ def test(model, epoch, test_loader):
 
     with torch.no_grad():
         for batch_idx, (input_data, target_data) in progress_bar:
-            concat_data = torch.cat((input_data[:]), 1)
-            input_data = concat_data.cuda()
+            input_data = [inp_data.cuda() for inp_data in input_data]
             target_data = [ta_data.cuda() for ta_data in target_data]
 
             # Disp Map Prediction
@@ -119,7 +125,8 @@ def test(model, epoch, test_loader):
                 # Get the Pred depth
                 #########################
                 pred_disp = np.squeeze(out_disp[i], axis=0)
-
+                pred_disp = pred_disp * dataset_std
+                pred_disp = pred_disp + dataset_mean
                 # Bound the predicted depth
                 pred_disp[pred_disp < min_disp] = min_disp
                 pred_disp[pred_disp > max_disp] = max_disp
@@ -164,10 +171,6 @@ def train_network(model, optimizer, scheduler, epochs, train_loader, test_loader
 
 
 def combined_berhu_smoothl1_loss(pred, gt, alpha=0.5):
-    # Valid disparity mask
-    mask = gt > 0
-    pred = pred[mask]
-    gt = gt[mask]
 
     if pred.numel() == 0:
         return torch.tensor(0.0, device=pred.device, requires_grad=True)

@@ -30,17 +30,19 @@ def input_sgm(data_path):
     # Load disp map
     im = cv2.imread(data_path, cv2.IMREAD_ANYDEPTH)
     h, w = im.shape
-    max_disp = 192
+
+    dataset_mean = 30.5 * (512. / w)
+    dataset_std = 7.5 * (512. / w)
     # Convert to float
     disp_float = im.astype(np.float32) / 256.0
 
     # Resize
     size = (512, 256)
-    disp_resized = cv2.resize(disp_float, size,
-                              interpolation=cv2.INTER_NEAREST)
+    disp_resized = 512/w * cv2.resize(disp_float, size,
+                                      interpolation=cv2.INTER_LINEAR)
 
     # Normalize disparity
-    disp_norm = np.clip(disp_resized, 0, max_disp) / max_disp
+    disp_norm = (disp_resized - dataset_mean) / dataset_std
     disp_norm = disp_norm.reshape(disp_norm.shape+(1,))
 
     return disp_norm
@@ -50,31 +52,36 @@ def train_target_gt_depth_loader(data_path):
 
     # Load disp map
     im = cv2.imread(data_path, cv2.IMREAD_ANYDEPTH)
-
+    h, w = im.shape
+    dataset_std = 7.5 * (512. / w)
+    dataset_mean = 30.5 * (512. / w)
     # Convert to float
     disp_float = im.astype(np.float32) / 256.0
 
     # Resize
     size = (512, 256)
-    disp_resized = cv2.resize(
-        disp_float, size, interpolation=cv2.INTER_NEAREST)
+    disp_resized = 512/w * cv2.resize(disp_float, size,
+                                      interpolation=cv2.INTER_NEAREST)
+    disp_resized[disp_resized == 0.] = -10000.
+    # Normalize disparity
+    disp_norm = (disp_resized - dataset_mean) / dataset_std
 
-    disp_resized = disp_resized.reshape(disp_resized.shape+(1,))
+    disp_norm = disp_norm.reshape(disp_norm.shape+(1,))
 
-    return disp_resized
+    return disp_norm
 
 
 def test_target_gt_depth_loader(data_path):
 
     # Load disp map
     im = cv2.imread(data_path, cv2.IMREAD_ANYDEPTH)
-
+    h, w = im.shape
     # Convert to float
     disp_float = im.astype(np.float32) / 256.0
 
     # Resize
     size = (512, 256)
-    disp_resized = cv2.resize(
+    disp_resized = (512/w) * cv2.resize(
         disp_float, size, interpolation=cv2.INTER_NEAREST)
 
     disp_resized = disp_resized.reshape(disp_resized.shape+(1,))

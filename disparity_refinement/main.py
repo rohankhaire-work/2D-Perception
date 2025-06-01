@@ -5,6 +5,7 @@ from dataloader.transforms import ToTensor
 from dataloader.co_transforms import Compose, RandomColorJitter, \
     RandomHorizontalFlip
 from model.DilNet import DilNetLRDisp
+from model.StereoRefineNet import StereoRefineNet
 from executors.train import train_network, EarlyStopping
 
 import torch
@@ -79,10 +80,12 @@ test_loader = torch.utils.data.DataLoader(
 
 # Create model
 net_refine = DilNetLRDisp(7, 1).to(device)
+# net_refine = StereoRefineNet().cuda()
 
-optimizer = torch.optim.Adam(net_refine.parameters(), lr=lr)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=milestones, gamma=0.5)
+optimizer = torch.optim.Adam(
+    net_refine.parameters(), lr=lr, betas=(0.9, 0.999))
+scheduler = torch.optim.lr_scheduler.StepLR(
+    optimizer, step_size=80, gamma=0.5)
 
 # Early stopping
 early_stopping = EarlyStopping(patience=patience, min_delta=0.01,
